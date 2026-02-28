@@ -15,6 +15,7 @@ async function parseMultipart(req) {
   return new Promise((resolve, reject) => {
     const form = new Formidable({
       maxFileSize: 4 * 1024 * 1024, // 4MB (under Vercel limit)
+      uploadDir: typeof process !== 'undefined' && process.env.VERCEL === '1' ? '/tmp' : undefined,
       filter: (part) => {
         if (part.mimetype && !ALLOWED_MIMES.includes(part.mimetype)) {
           reject(new Error('Invalid file type. Only PDF, JPG, and PNG allowed.'));
@@ -86,12 +87,13 @@ module.exports = async (req, res) => {
       fileSize: file.size,
     });
   } catch (error) {
+    console.error('[api/upload]', error.message || error);
     if (error.message && error.message.includes('Invalid file type')) {
       return res.status(400).json({ error: error.message });
     }
     const status = error.response?.status;
     const pinataError = error.response?.data?.error || error.response?.data?.message;
-    const msg = pinataError || error.message;
+    const msg = pinataError || error.message || String(error);
     if (status === 403) {
       return res.status(403).json({
         error: 'Pinata rejected upload (403)',

@@ -241,9 +241,7 @@ function CreateProjectForm() {
     if (!documentFile) return '';
     const formData = new FormData();
     formData.append('document', documentFile);
-    const response = await axios.post(`${API_URL}/upload`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    const response = await axios.post(`${API_URL}/upload`, formData);
     return response.data.ipfsHash;
   };
 
@@ -634,9 +632,7 @@ function UploadProofForm({ projects }) {
     const formData = new FormData();
     formData.append('document', proofFile);
     
-    const response = await axios.post(`${API_URL}/upload`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    const response = await axios.post(`${API_URL}/upload`, formData);
     
     return response.data.ipfsHash;
   };
@@ -668,7 +664,8 @@ function UploadProofForm({ projects }) {
       setMilestoneId('');
     } catch (error) {
       console.error('Error:', error);
-      const msg = error?.shortMessage || error?.message || 'Failed to upload proof';
+      const serverMsg = error?.response?.data?.message || error?.response?.data?.error;
+      const msg = serverMsg || error?.shortMessage || error?.message || 'Failed to upload proof';
       toast.error(msg);
     } finally {
       setUploading(false);
