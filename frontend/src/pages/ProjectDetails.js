@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useContractRead } from 'wagmi';
+import { QRCodeSVG } from 'qrcode.react';
+import toast from 'react-hot-toast';
 import { 
   Building2, 
   ArrowLeft, 
@@ -13,7 +15,10 @@ import {
   AlertCircle,
   Wallet,
   TrendingUp,
-  Calendar
+  Calendar,
+  Share2,
+  Copy,
+  Check
 } from 'lucide-react';
 import { CONTRACT_ABI, CONTRACT_ADDRESS } from '../utils/wagmi';
 import { formatEther } from 'viem';
@@ -22,6 +27,23 @@ function ProjectDetails() {
   const { projectId } = useParams();
   const [project, setProject] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [linkCopied, setLinkCopied] = useState(false);
+
+  // Share URL for this project (works when deployed or on localhost)
+  const shareUrl = typeof window !== 'undefined'
+    ? `${window.location.origin}/project/${projectId}`
+    : `http://localhost:3001/project/${projectId}`;
+
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setLinkCopied(true);
+      toast.success('Link copied to clipboard');
+      setTimeout(() => setLinkCopied(false), 2000);
+    } catch (err) {
+      toast.error('Failed to copy link');
+    }
+  };
 
   // Fetch project complete data
   const { data: projectData, isError, isLoading } = useContractRead({
@@ -134,6 +156,42 @@ function ProjectDetails() {
                 In Progress
               </span>
             )}
+          </div>
+        </div>
+      </div>
+
+      {/* Share project — QR code & link */}
+      <div className="bg-slate-800/50 border border-slate-700 rounded-2xl p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <Share2 className="w-5 h-5 text-blue-400" />
+          <h3 className="text-lg font-semibold text-white">Share this project</h3>
+        </div>
+        <p className="text-slate-400 text-sm mb-4">
+          Anyone can open this project with the link or by scanning the QR code.
+        </p>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
+          <div className="flex-shrink-0 p-4 bg-white rounded-xl">
+            <QRCodeSVG value={shareUrl} size={160} level="M" includeMargin />
+          </div>
+          <div className="flex flex-col gap-3 min-w-0">
+            <p className="text-slate-400 text-xs font-mono break-all">{shareUrl}</p>
+            <button
+              type="button"
+              onClick={handleCopyLink}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium transition-colors"
+            >
+              {linkCopied ? (
+                <>
+                  <Check className="w-4 h-4" />
+                  Copied
+                </>
+              ) : (
+                <>
+                  <Copy className="w-4 h-4" />
+                  Copy link
+                </>
+              )}
+            </button>
           </div>
         </div>
       </div>
