@@ -663,7 +663,8 @@ function UploadProofForm({ projects }) {
       setProofFile(null);
       setMilestoneId('');
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Upload proof error:', error);
+      if (error?.response?.data) console.error('API response:', error.response.data);
       const serverMsg = error?.response?.data?.message || error?.response?.data?.error;
       const msg = serverMsg || error?.shortMessage || error?.message || 'Failed to upload proof';
       toast.error(msg);

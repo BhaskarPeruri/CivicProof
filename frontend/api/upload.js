@@ -1,16 +1,10 @@
 /**
  * Vercel serverless: POST /api/upload
  * Upload document to IPFS via Pinata.
+ * Uses formidable-serverless on Vercel to avoid "formidable is not a function" and request handling issues.
  * Note: Vercel has a 4.5 MB request body limit on Hobby plan.
  */
-const formidableModule = require('formidable');
-// Support named (Formidable), default, v2 (IncomingForm), or module-as-function
-const Formidable =
-  formidableModule.Formidable ||
-  formidableModule.default ||
-  formidableModule.IncomingForm ||
-  (typeof formidableModule === 'function' ? formidableModule : null) ||
-  formidableModule;
+const formidable = require('formidable-serverless');
 const FormData = require('form-data');
 const axios = require('axios');
 const fs = require('fs');
@@ -18,35 +12,26 @@ const fs = require('fs');
 const PINATA_API_URL = 'https://api.pinata.cloud/pinning/pinFileToIPFS';
 const ALLOWED_MIMES = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
 
-async function parseMultipart(req) {
+function parseMultipart(req) {
   return new Promise((resolve, reject) => {
-    const opts = {
-      maxFileSize: 4 * 1024 * 1024, // 4MB (under Vercel limit)
-      uploadDir: typeof process !== 'undefined' && process.env.VERCEL === '1' ? '/tmp' : undefined,
-      filter: (part) => {
-        if (part.mimetype && !ALLOWED_MIMES.includes(part.mimetype)) {
-          reject(new Error('Invalid file type. Only PDF, JPG, and PNG allowed.'));
-          return false;
-        }
-        return true;
-      },
-    };
-    let form;
-    if (typeof Formidable === 'function') {
-      try {
-        form = new Formidable(opts);
-      } catch (_) {
-        form = Formidable(opts);
-      }
-    }
-    if (!form || typeof form.parse !== 'function') {
-      return reject(new Error('Formidable not available (Formidable.Formidable or default)'));
-    }
+    const form = new formidable.IncomingForm();
+    form.uploadDir = process.env.VERCEL === '1' ? '/tmp' : undefined;
+    form.maxFileSize = 4 * 1024 * 1024; // 4MB (under Vercel limit)
     form.parse(req, (err, fields, files) => {
       if (err) return reject(err);
       resolve({ fields, files });
     });
   });
+}
+
+// Normalize file from either formidable v1 (path, name, type) or v3 (filepath, originalFilename, mimetype)
+function getFileInfo(file) {
+  if (!file) return null;
+  const path = file.filepath || file.path;
+  const name = file.originalFilename || file.newFilename || file.name || 'document';
+  const mimetype = file.mimetype || file.type || 'application/octet-stream';
+  const size = file.size;
+  return path ? { path, name, mimetype, size } : null;
 }
 
 module.exports = async (req, res) => {
@@ -67,22 +52,25 @@ module.exports = async (req, res) => {
 
   try {
     const { files } = await parseMultipart(req);
-    const file = files.document?.[0] || files.document || files.file?.[0] || files.file;
-    if (!file) {
+    const rawFile = files.document || files.file;
+    const file = Array.isArray(rawFile) ? rawFile[0] : rawFile;
+    const info = getFileInfo(file);
+    if (!info) {
       return res.status(400).json({ error: 'Document file is required' });
     }
+    if (info.mimetype && !ALLOWED_MIMES.includes(info.mimetype)) {
+      return res.status(400).json({
+        error: 'Invalid file type. Only PDF, JPG, and PNG allowed.',
+      });
+    }
 
-    const filePath = file.filepath;
-    const originalName = file.originalFilename || file.newFilename || 'document';
-    const mimetype = file.mimetype || 'application/octet-stream';
-    const fileStream = fs.createReadStream(filePath);
-
+    const fileStream = fs.createReadStream(info.path);
     const formData = new FormData();
-    formData.append('file', fileStream, { filename: originalName, contentType: mimetype });
+    formData.append('file', fileStream, { filename: info.name, contentType: info.mimetype });
     formData.append(
       'pinataMetadata',
       JSON.stringify({
-        name: originalName,
+        name: info.name,
         keyvalues: { uploadedAt: new Date().toISOString(), service: 'CivicProof' },
       })
     );
@@ -101,8 +89,8 @@ module.exports = async (req, res) => {
       success: true,
       ipfsHash,
       ipfsUrl: `https://gateway.pinata.cloud/ipfs/${ipfsHash}`,
-      fileName: originalName,
-      fileSize: file.size,
+      fileName: info.name,
+      fileSize: info.size,
     });
   } catch (error) {
     console.error('[api/upload]', error.message || error);
