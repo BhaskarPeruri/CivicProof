@@ -3,7 +3,7 @@
  * Upload document to IPFS via Pinata.
  * Note: Vercel has a 4.5 MB request body limit on Hobby plan.
  */
-const formidable = require('formidable');
+const { Formidable } = require('formidable');
 const FormData = require('form-data');
 const axios = require('axios');
 const fs = require('fs');
@@ -13,7 +13,7 @@ const ALLOWED_MIMES = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'
 
 async function parseMultipart(req) {
   return new Promise((resolve, reject) => {
-    const form = formidable({
+    const form = new Formidable({
       maxFileSize: 4 * 1024 * 1024, // 4MB (under Vercel limit)
       filter: (part) => {
         if (part.mimetype && !ALLOWED_MIMES.includes(part.mimetype)) {
