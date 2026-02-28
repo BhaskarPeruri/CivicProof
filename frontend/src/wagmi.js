@@ -237,8 +237,10 @@ export const CONTRACT_ABI = [
 // Contract address (update after deployment)
 export const CONTRACT_ADDRESS = process.env.REACT_APP_CONTRACT_ADDRESS || '0x0000000000000000000000000000000000000000';
 
-// Backend API URL
-export const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+// Backend API URL: same-origin /api on Vercel when REACT_APP_API_URL is not set
+export const API_URL =
+  process.env.REACT_APP_API_URL ||
+  (typeof window !== 'undefined' ? `${window.location.origin}/api` : 'http://localhost:5000');
 
 // EIP712 Domain for signing
 export const EIP712_DOMAIN = {

@@ -35,14 +35,14 @@ Citizens cannot independently verify: how much was sanctioned, released, or util
 
 CivicProof enforces milestone-based transparency through smart contracts.
 
-| Feature | Description |
-|--------|-------------|
-| Incremental releases | Milestone-based fund releases |
-| On-chain tracking | Sanctioned, released, and utilized amounts |
-| IPFS proofs | Documents/images stored via Pinata |
-| EIP-712 signatures | Structured authority signing |
-| Auto verification | Milestone verification and project completion |
-| QR view | Citizen-facing transparency page |
+| Feature              | Description                                   |
+| -------------------- | --------------------------------------------- |
+| Incremental releases | Milestone-based fund releases                 |
+| On-chain tracking    | Sanctioned, released, and utilized amounts    |
+| IPFS proofs          | Documents/images stored via Pinata            |
+| EIP-712 signatures   | Structured authority signing                  |
+| Auto verification    | Milestone verification and project completion |
+| QR view              | Citizen-facing transparency page              |
 
 ---
 
@@ -101,12 +101,12 @@ CivicProof/
 
 ## Security Model
 
-- EIP-712 typed structured signing  
-- Per-project, per-authority nonces  
-- Proof version invalidation when proof CID changes  
-- Signature recovery and authority validation  
-- Replay attack prevention  
-- Proof CID bound inside signature  
+- EIP-712 typed structured signing
+- Per-project, per-authority nonces
+- Proof version invalidation when proof CID changes
+- Signature recovery and authority validation
+- Replay attack prevention
+- Proof CID bound inside signature
 
 Authorities sign: `SignMilestone(projectId, milestoneId, proofCID, proofVersion, nonce)`. The contract checks: signer is authority, nonce matches, proof CID and version match, signature is valid.
 
@@ -135,12 +135,12 @@ Authorities sign: `SignMilestone(projectId, milestoneId, proofCID, proofVersion,
 
 ## Tech Stack Summary
 
-| Layer | Technologies |
-|-------|--------------|
+| Layer         | Technologies                                     |
+| ------------- | ------------------------------------------------ |
 | **Contracts** | Solidity ^0.8.20, OpenZeppelin, EIP-712, Foundry |
-| **Backend** | Node.js, Express, Multer, Pinata (IPFS) |
-| **Frontend** | React, Tailwind, wagmi, RainbowKit, viem |
-| **Chain** | Monad (testnet) |
+| **Backend**   | Node.js, Express, Multer, Pinata (IPFS)          |
+| **Frontend**  | React, Tailwind, wagmi, RainbowKit, viem         |
+| **Chain**     | Monad (testnet)                                  |
 
 ---
 
@@ -207,15 +207,15 @@ App runs at `http://localhost:3000`. Connect wallet (Monad testnet), then use Ad
 
 ## Environment Variables Cheat Sheet
 
-| Where | Variable | Purpose |
-|-------|----------|--------|
-| **contracts** | `PRIVATE_KEY` | Deployer key for `forge script` |
-| **contracts** | `RPC_URL` | Monad RPC (e.g. testnet) |
-| **backend** | `PORT` | Server port (default 5000) |
-| **backend** | `PINATA_JWT` | Pinata JWT for IPFS uploads |
-| **frontend** | `REACT_APP_CONTRACT_ADDRESS` | Deployed CivicProof contract |
-| **frontend** | `REACT_APP_API_URL` | Backend URL (e.g. http://localhost:5000) |
-| **frontend** | `REACT_APP_WALLET_CONNECT_PROJECT_ID` | WalletConnect Cloud project ID |
+| Where         | Variable                              | Purpose                                  |
+| ------------- | ------------------------------------- | ---------------------------------------- |
+| **contracts** | `PRIVATE_KEY`                         | Deployer key for `forge script`          |
+| **contracts** | `RPC_URL`                             | Monad RPC (e.g. testnet)                 |
+| **backend**   | `PORT`                                | Server port (default 5000)               |
+| **backend**   | `PINATA_JWT`                          | Pinata JWT for IPFS uploads              |
+| **frontend**  | `REACT_APP_CONTRACT_ADDRESS`          | Deployed CivicProof contract             |
+| **frontend**  | `REACT_APP_API_URL`                   | Backend URL (e.g. http://localhost:5000) |
+| **frontend**  | `REACT_APP_WALLET_CONNECT_PROJECT_ID` | WalletConnect Cloud project ID           |
 
 ---
 
@@ -230,10 +230,10 @@ Use this address in `REACT_APP_CONTRACT_ADDRESS` to point the frontend at the li
 
 ## Example Scenario
 
-- **Project:** Road Expansion Phase 1  
-- **Sanctioned:** 10,000 MON  
+- **Project:** Road Expansion Phase 1
+- **Sanctioned:** 10,000 MON
 - **Milestone 1:** 3,000 MON released, 2,800 MON utilized; proof on IPFS; authorities sign → milestone verified.  
-All of this is on-chain and auditable.
+  All of this is on-chain and auditable.
 
 ---
 
@@ -253,6 +253,6 @@ All of this is on-chain and auditable.
 
 CivicProof is a **programmable accountability layer** for government infrastructure, DAO treasuries, NGO grants, and public-sector digital governance. Trust should be **cryptographic—not assumed**.
 
-**Built for:** Monad Blitz Hyderabad  
+**Built for:** Monad Blitz Hyderabad
 
 **License:** MIT
