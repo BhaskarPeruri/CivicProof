@@ -1,62 +1,75 @@
-import React, { useEffect, useState } from 'react';
+import React, { useMemo, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useContractRead } from 'wagmi';
+import { useContractRead, useContractReads } from 'wagmi';
 import { Building2, ChevronRight, CheckCircle, Clock, AlertCircle, Loader2 } from 'lucide-react';
 import { CONTRACT_ABI, CONTRACT_ADDRESS } from '../utils/wagmi';
 
 function ProjectList() {
   const [projects, setProjects] = useState([]);
-  const [loading, setLoading] = useState(true);
 
-  // Get total project count
-  const { data: projectCount, isError: countError } = useContractRead({
+  const isZeroAddress = !CONTRACT_ADDRESS || CONTRACT_ADDRESS === '0x0000000000000000000000000000000000000000';
+
+  // Get total project count (disabled when contract not deployed - shows "No projects" immediately)
+  const { data: projectCount, isLoading: countLoading, isError: countError } = useContractRead({
     address: CONTRACT_ADDRESS,
     abi: CONTRACT_ABI,
     functionName: 'getProjectCount',
+    enabled: !isZeroAddress,
   });
 
-  // Fetch all projects
+  const count = projectCount !== undefined && projectCount !== null ? Number(projectCount) : 0;
+
+  // Batch-read full project data for all projects (scheme + completed) from contract
+  const contracts = useMemo(() => {
+    if (count <= 0) return [];
+    return Array.from({ length: count }, (_, i) => ({
+      address: CONTRACT_ADDRESS,
+      abi: CONTRACT_ABI,
+      functionName: 'getProjectCompleteData',
+      args: [BigInt(i)],
+    }));
+  }, [count]);
+
+  const { data: projectsData, isLoading: readsLoading } = useContractReads({
+    contracts,
+    allowFailure: true,
+    enabled: !isZeroAddress && count > 0,
+  });
+
+  // Derive project list from contract read results
   useEffect(() => {
-    const fetchProjects = async () => {
-      if (!projectCount) return;
-      
-      const count = Number(projectCount);
-      const projectData = [];
-
-      for (let i = 0; i < count; i++) {
-        try {
-          // Get project scheme
-          const scheme = await fetchProjectScheme(i);
-          const isCompleted = await fetchProjectCompletion(i);
-          
-          projectData.push({
-            id: i,
-            scheme,
-            completed: isCompleted,
-          });
-        } catch (error) {
-          console.error(`Error fetching project ${i}:`, error);
-        }
+    if (count === 0) {
+      setProjects([]);
+      return;
+    }
+    if (!projectsData || projectsData.length === 0) return;
+    const list = projectsData.map((result, i) => {
+      if (result.status !== 'success' || !result.result) {
+        return { id: i, scheme: `Project #${i + 1}`, completed: false };
       }
+      const d = result.result;
+      return {
+        id: i,
+        scheme: d.scheme || `Project #${i + 1}`,
+        completed: !!d.completed,
+      };
+    });
+    setProjects(list);
+  }, [projectsData, count]);
 
-      setProjects(projectData);
-      setLoading(false);
-    };
+  // No contract deployed - show "No projects" immediately
+  if (isZeroAddress) {
+    return (
+      <div className="text-center py-20">
+        <Building2 className="w-16 h-16 text-slate-600 mx-auto mb-4" />
+        <h2 className="text-xl font-semibold text-white mb-2">No Projects Yet</h2>
+        <p className="text-slate-400">Projects will appear here once the contract is deployed and projects are created.</p>
+      </div>
+    );
+  }
 
-    fetchProjects();
-  }, [projectCount]);
-
-  const fetchProjectScheme = async (projectId) => {
-    // This would be a contract call - for now returning placeholder
-    // In production, you'd use useContractRead or a multicall
-    return `Project #${projectId + 1}`;
-  };
-
-  const fetchProjectCompletion = async (projectId) => {
-    // This would be a contract call
-    return false;
-  };
-
+  // Only show loading when actually fetching - not when there are 0 projects
+  const loading = countLoading || (count > 0 && readsLoading);
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">

@@ -14,7 +14,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 contract CivicProof is EIP712, Ownable {
     using ECDSA for bytes32;
 
-    uint256 private _projectIds;
+    uint256 public _projectIds;
 
     constructor(address initialOwner) EIP712("CivicProof", "1") Ownable(initialOwner) {}
 
@@ -345,4 +345,8 @@ contract CivicProof is EIP712, Ownable {
                 milestones: milestoneViews
             });
     }
+
+function getProjectCount() external view returns (uint256) {
+    return _projectIds;
+}
 }

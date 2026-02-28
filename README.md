@@ -1,221 +1,258 @@
-🏗 CivicProof
-Transparent Public Infrastructure Verification on Monad
-CivicProof is a milestone-based infrastructure transparency protocol built on Monad. It enables cryptographic verification of public project progress using EIP-712 authority signatures and IPFS-backed proof storage.
-Instead of relying on centralized reporting systems, CivicProof provides on-chain fund tracking, signed milestone approvals, and public auditability through a single QR-accessible view.
+# CivicProof
 
-🏆 Monad Blitz Hyderabad Submission
-CivicProof introduces programmable accountability for public infrastructure projects.
-It ensures that:
-Funds are released incrementally
-Utilization is transparently tracked
-Milestones are cryptographically verified
-Proof is permanently stored via IPFS
-Citizens can publicly audit project status
+**Transparent Public Infrastructure Verification on Monad**
 
-🚨 The Problem
-Public infrastructure projects often suffer from:
-Lack of transparency in fund allocation
-Delayed or manipulated reporting
-No cryptographic proof of milestone completion
-Centralized authority approvals
-No public audit layer
-Citizens cannot independently verify:
-How much was sanctioned
-How much was released
-How much was utilized
-Whether work was actually completed
-Trust is assumed — not proven.
+CivicProof is a milestone-based infrastructure transparency protocol built on Monad. It enables cryptographic verification of public project progress using EIP-712 authority signatures and IPFS-backed proof storage. Instead of relying on centralized reporting, it provides on-chain fund tracking, signed milestone approvals, and public auditability—including a single QR-accessible view.
 
-💡 The Solution
+---
+
+## Monad Blitz Hyderabad Submission
+
+CivicProof introduces **programmable accountability** for public infrastructure:
+
+- Funds are released **incrementally** (milestone-by-milestone)
+- Utilization is **transparently tracked** on-chain
+- Milestones are **cryptographically verified** via authority signatures
+- Proof is **permanently stored** on IPFS
+- Citizens can **publicly audit** project status
+
+---
+
+## The Problem
+
+Public infrastructure often suffers from:
+
+- Lack of transparency in fund allocation
+- Delayed or manipulated reporting
+- No cryptographic proof of milestone completion
+- Centralized authority approvals and no public audit layer
+
+Citizens cannot independently verify: how much was sanctioned, released, or utilized, or whether work was actually completed. **Trust is assumed—not proven.**
+
+---
+
+## The Solution
+
 CivicProof enforces milestone-based transparency through smart contracts.
-Core Features
-✅ Incremental milestone-based fund releases
-✅ On-chain tracking of sanctioned, released, and utilized funds
-✅ IPFS-based proof storage (documents/images)
-✅ EIP-712 structured authority signatures
-✅ Automatic milestone verification
-✅ Automatic project completion detection
-✅ QR-based citizen transparency view
 
-🧱 Architecture
-Project
-Each project contains:
-Scheme name
-Official project document (IPFS CID)
-Sanctioned amount
-Total released amount
-Total utilized amount
-Authority list
-Milestone list
-Completion status
+| Feature | Description |
+|--------|-------------|
+| Incremental releases | Milestone-based fund releases |
+| On-chain tracking | Sanctioned, released, and utilized amounts |
+| IPFS proofs | Documents/images stored via Pinata |
+| EIP-712 signatures | Structured authority signing |
+| Auto verification | Milestone verification and project completion |
+| QR view | Citizen-facing transparency page |
 
-Milestone
-Each milestone contains:
-Amount released
-Amount utilized
-Proof CID
-Signature count
-Verification status
-Proof version (invalidates previous signatures if proof changes)
+---
 
-Authority
-Each authority contains:
-Name
-Designation
-Wallet address
-Authorities sign milestone proofs using EIP-712 typed structured data.
+## Project Structure (for Hackathon Builders)
 
-🔐 Security Model
-CivicProof uses a hardened signature architecture:
-🔏 EIP-712 typed structured signing
-🔁 Per-project, per-authority nonces
-🔄 Proof version invalidation
-🔎 Signature recovery & authority validation
-🛡 Replay attack prevention
-📎 Proof CID binding inside signature
-Authorities sign the following structure:
-SignMilestone(
-  uint256 projectId,
-  uint256 milestoneId,
-  string proofCID,
-  uint256 proofVersion,
-  uint256 nonce
-)
+The repo has **three main parts**. Run each in its own terminal when developing.
 
+```
+CivicProof/
+├── contracts/     # Solidity + Foundry — on-chain logic
+├── backend/       # Node.js API — IPFS uploads (Pinata)
+└── frontend/      # React app — UI + wallet (RainbowKit, wagmi)
+```
 
-The contract verifies:
-The signer is a registered authority
-Nonce matches expected value
-Proof CID matches stored proof
-Proof version matches
-Signature is cryptographically valid
+### `contracts/` — Smart contracts (Foundry)
 
-🌍 Public Transparency Flow
-Government creates a project
-Funds are released milestone-by-milestone
-Contractor uploads proof (IPFS CID)
-Authorities sign milestone off-chain
-Signatures are submitted on-chain
-Milestone becomes verified automatically
-When all milestones are verified and total utilized ≥ sanctioned amount → project marked complete
+- **What it is:** CivicProof core contract and deployment scripts.
+- **Stack:** Solidity ^0.8.20, OpenZeppelin, EIP-712, **Foundry** (not Hardhat).
+- **Key files:**
+  - `src/CivicProof.sol` — main contract
+  - `script/DeployCivicProof.s.sol` — deploy script
+  - `test/CivicProof.t.sol` — tests
 
-📲 QR-Based Public View
-Citizens scan a QR code linked to:
-getProjectCompleteData(projectId)
+### `backend/` — API server (Node.js)
 
+- **What it is:** Small Express server that uploads documents to IPFS via Pinata.
+- **Stack:** Express, Multer, Axios, Pinata.
+- **Key file:** `server.js`
+- **Endpoints:**
+  - `GET /health` — health check
+  - `POST /upload` — upload file → returns IPFS hash/CID
+  - `GET /ipfs/:hash` — get IPFS gateway URL for a hash
 
-This returns:
-Project metadata
-Authority list
-All milestones
-Released vs utilized amounts
-Verification status
-Completion status
-Frontend renders proof using:
-https://ipfs.io/ipfs/<CID>
+### `frontend/` — Web app (React)
 
+- **What it is:** DApp for admins, authorities, and citizens.
+- **Stack:** React, Tailwind CSS, **wagmi**, **RainbowKit**, **viem**.
+- **Routes:**
+  - `/` — Home
+  - `/projects` — List projects
+  - `/project/:projectId` — Project details + QR view
+  - `/admin` — Create projects, add authorities, release milestones
+  - `/authority` — Sign milestones (EIP-712)
 
-No centralized server required.
+---
 
-⚡ Why Monad?
-Monad provides:
-High throughput
-Low latency
-Efficient EVM compatibility
-Ideal infrastructure for real-time transparency systems
-CivicProof leverages Monad to enable scalable, low-cost public accountability.
+## Architecture (on-chain)
 
-🛠 Tech Stack
-Solidity ^0.8.20
-OpenZeppelin Contracts
-EIP-712
-IPFS
-Monad Network
+**Project** — scheme name, project document (IPFS CID), sanctioned/released/utilized amounts, authority list, milestones, completion status.
 
-🚀 Deployment
-Install dependencies:
-npm install @openzeppelin/contracts
+**Milestone** — amount released, amount utilized, proof CID, signature count, verification status, proof version (invalidates old signatures if proof changes).
 
+**Authority** — name, designation, wallet. Authorities sign milestone proofs using EIP-712 typed data.
 
-Compile:
-npx hardhat compile
+---
 
+## Security Model
 
-Deploy to Monad:
-npx hardhat run scripts/deploy.js --network monad
+- EIP-712 typed structured signing  
+- Per-project, per-authority nonces  
+- Proof version invalidation when proof CID changes  
+- Signature recovery and authority validation  
+- Replay attack prevention  
+- Proof CID bound inside signature  
 
+Authorities sign: `SignMilestone(projectId, milestoneId, proofCID, proofVersion, nonce)`. The contract checks: signer is authority, nonce matches, proof CID and version match, signature is valid.
 
+---
 
-📊 Example Scenario
-Project: Road Expansion Phase 1
-Sanctioned Budget: 10,000 MON
-Milestone 1:
-3,000 MON released
-2,800 MON utilized
-Proof uploaded to IPFS
-Authorities sign
-Milestone verified
-All data is publicly auditable and cryptographically verifiable.
+## Public Transparency Flow
 
-🔮 Potential Improvements & Future Expansion
-CivicProof is designed as a foundational transparency layer. Future extensions can significantly enhance its real-world integration.
-🪪 Aadhaar-Based Authority Verification (India Context)
-Integrate Aadhaar-based identity verification for registered authorities
-Bind verified government identity to wallet address
-Prevent fake authority onboarding
-Enable stronger compliance in public-sector deployments
-This would allow identity-backed cryptographic accountability.
+1. Government (owner) creates a project on-chain.
+2. Funds are released per milestone.
+3. Contractor uploads proof (PDF/image) → backend returns IPFS CID.
+4. Authorities sign the milestone off-chain (EIP-712).
+5. Signatures are submitted on-chain.
+6. Milestone becomes verified automatically.
+7. When all milestones are verified and total utilized ≥ sanctioned → project marked **complete**.
 
-🤖 AI Agent-Based Monitoring
-AI agents to automatically analyze uploaded construction images
-Computer vision to verify real-world progress
-Compare milestone claims with visual proof
-Flag inconsistencies or anomalies
-Generate automated audit summaries
-AI agents could act as an additional verification layer before authority approval.
+**QR view:** Citizens scan a QR linking to `getProjectCompleteData(projectId)`. Frontend shows metadata, authorities, milestones, amounts, verification status, and proof via `https://ipfs.io/ipfs/<CID>` (no central server required).
 
-🧠 Predictive Risk Analysis
-AI models trained on historical infrastructure data
-Predict project delays or fund misallocation
-Early warning signals for governance bodies
+---
 
-🗳 DAO-Based Oversight
-Allow citizens or stakeholders to participate in milestone approvals
-Hybrid authority + DAO governance model
-Decentralized public oversight
+## Why Monad?
 
-🧾 zk-Proof Integration
-Zero-knowledge proofs to validate certain off-chain compliance metrics
-Privacy-preserving reporting for sensitive projects
+- High throughput, low latency, EVM-compatible.
+- Suited for real-time transparency and low-cost public accountability.
 
-🖼 ERC-721 Project Identity Layer
-Represent each project as an NFT
-Immutable on-chain identity
-Marketplace-compatible transparency records
+---
 
-📈 On-Chain Progress Scoring
-Automated progress percentage calculation
-Public trust score for authorities and contractors
+## Tech Stack Summary
 
-🧠 Vision
-CivicProof is more than a hackathon prototype.
-It is a programmable accountability layer for:
-Government infrastructure transparency
-DAO treasury milestone enforcement
-NGO grant verification
-Public-sector digital governance
-Trust should be cryptographic — not assumed.
+| Layer | Technologies |
+|-------|--------------|
+| **Contracts** | Solidity ^0.8.20, OpenZeppelin, EIP-712, Foundry |
+| **Backend** | Node.js, Express, Multer, Pinata (IPFS) |
+| **Frontend** | React, Tailwind, wagmi, RainbowKit, viem |
+| **Chain** | Monad (testnet) |
 
-👨‍💻 Built For
-Monad Blitz Hyderabad
+---
 
-📄 License
-MIT
+## Quick Start (Run Locally)
 
+### 1. Contracts (build, test, deploy)
 
+```bash
+cd contracts
 
+# Install dependencies (Foundry: forge already installed)
+forge install
 
-contract address:
-https://testnet.monadvision.com/address/0x4EDdc8877C2e916E767a5Ec29C933Ff1A1591EBC?tab=Contract
+# Compile
+forge build
 
+# Run tests
+forge test
 
+# Deploy to Monad testnet (set PRIVATE_KEY in .env)
+# forge script script/DeployCivicProof.s.sol --rpc-url https://testnet-rpc.monad.xyz --private-key $PRIVATE_KEY --broadcast
+```
+
+**Contract `.env` (contracts/.env):**
+
+- `PRIVATE_KEY` — deployer wallet private key (with testnet MON).
+- `RPC_URL` — e.g. `https://testnet-rpc.monad.xyz`.
+
+### 2. Backend (IPFS uploads)
+
+```bash
+cd backend
+
+npm install
+cp .env.example .env   # or create .env with:
+
+# Required in .env:
+# PORT=5000
+# PINATA_JWT=your_pinata_jwt   # from https://app.pinata.cloud/ → API Keys → New Key (JWT)
+
+npm run dev
+```
+
+Server runs at `http://localhost:5000`. Upload endpoint expects `document` (file) in `POST /upload`.
+
+### 3. Frontend (React app)
+
+```bash
+cd frontend
+
+npm install
+
+# Create .env with:
+# REACT_APP_CONTRACT_ADDRESS=0xYourDeployedCivicProofAddress
+# REACT_APP_API_URL=http://localhost:5000
+# REACT_APP_WALLET_CONNECT_PROJECT_ID=your_walletconnect_project_id   # from https://cloud.walletconnect.com/
+
+npm start
+```
+
+App runs at `http://localhost:3000`. Connect wallet (Monad testnet), then use Admin or Authority flows.
+
+---
+
+## Environment Variables Cheat Sheet
+
+| Where | Variable | Purpose |
+|-------|----------|--------|
+| **contracts** | `PRIVATE_KEY` | Deployer key for `forge script` |
+| **contracts** | `RPC_URL` | Monad RPC (e.g. testnet) |
+| **backend** | `PORT` | Server port (default 5000) |
+| **backend** | `PINATA_JWT` | Pinata JWT for IPFS uploads |
+| **frontend** | `REACT_APP_CONTRACT_ADDRESS` | Deployed CivicProof contract |
+| **frontend** | `REACT_APP_API_URL` | Backend URL (e.g. http://localhost:5000) |
+| **frontend** | `REACT_APP_WALLET_CONNECT_PROJECT_ID` | WalletConnect Cloud project ID |
+
+---
+
+## Deployed Contract (Monad Testnet)
+
+- **Contract address:** `0x4EDdc8877C2e916E767a5Ec29C933Ff1A1591EBC`
+- **Explorer:** [Monad Vision – CivicProof](https://testnet.monadvision.com/address/0x4EDdc8877C2e916E767a5Ec29C933Ff1A1591EBC?tab=Contract)
+
+Use this address in `REACT_APP_CONTRACT_ADDRESS` to point the frontend at the live contract.
+
+---
+
+## Example Scenario
+
+- **Project:** Road Expansion Phase 1  
+- **Sanctioned:** 10,000 MON  
+- **Milestone 1:** 3,000 MON released, 2,800 MON utilized; proof on IPFS; authorities sign → milestone verified.  
+All of this is on-chain and auditable.
+
+---
+
+## Future Ideas
+
+- Aadhaar-based authority verification (India)
+- AI agents for image/progress verification
+- Predictive risk analysis
+- DAO-based oversight
+- zk-proofs for compliance
+- ERC-721 project identity (NFT)
+- On-chain progress scoring
+
+---
+
+## Vision
+
+CivicProof is a **programmable accountability layer** for government infrastructure, DAO treasuries, NGO grants, and public-sector digital governance. Trust should be **cryptographic—not assumed**.
+
+**Built for:** Monad Blitz Hyderabad  
+
+**License:** MIT

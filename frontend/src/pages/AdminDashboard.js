@@ -12,7 +12,7 @@ import {
   X
 } from 'lucide-react';
 import { CONTRACT_ABI, CONTRACT_ADDRESS, API_URL } from '../utils/wagmi';
-import { parseEther } from 'viem';
+import { parseEther, formatEther } from 'viem';
 import toast from 'react-hot-toast';
 import axios from 'axios';
 
@@ -270,7 +270,8 @@ function CreateProjectForm() {
           cid = await uploadDocument();
           toast.success('Document uploaded!', { id: toastId });
         } catch (uploadErr) {
-          toast.error(uploadErr.response?.data?.message || 'Document upload failed. Check backend and Pinata JWT.', { id: toastId });
+          const errMsg = uploadErr.response?.data?.message || uploadErr.response?.data?.error || uploadErr.message;
+          toast.error(errMsg || 'Document upload failed. Check backend is running and PINATA_JWT is set.', { id: toastId });
           throw uploadErr;
         }
       }
@@ -492,17 +493,34 @@ function UpdateUtilizationForm({ projects }) {
   const [milestoneId, setMilestoneId] = useState('');
   const [amount, setAmount] = useState('');
 
+  // Fetch project data to get valid milestones when project is selected
+  const { data: projectData } = useContractRead({
+    address: CONTRACT_ADDRESS,
+    abi: CONTRACT_ABI,
+    functionName: 'getProjectCompleteData',
+    args: selectedProject !== '' ? [BigInt(selectedProject)] : undefined,
+    enabled: !!selectedProject,
+  });
+
+  const milestones = projectData?.milestones ?? [];
+  const hasMilestones = milestones.length > 0;
+
   const { config } = usePrepareContractWrite({
     address: CONTRACT_ADDRESS,
     abi: CONTRACT_ABI,
     functionName: 'updateUtilization',
-    args: selectedProject && milestoneId && amount ? 
+    args: selectedProject && milestoneId !== '' && amount ? 
       [BigInt(selectedProject), BigInt(milestoneId), parseEther(amount)] : undefined,
-    enabled: !!selectedProject && !!milestoneId && !!amount,
+    enabled: !!selectedProject && milestoneId !== '' && !!amount && hasMilestones,
   });
 
   const { write, data } = useContractWrite(config);
   const { isLoading } = useWaitForTransaction({ hash: data?.hash });
+
+  const handleProjectChange = (e) => {
+    setSelectedProject(e.target.value);
+    setMilestoneId('');
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -521,7 +539,7 @@ function UpdateUtilizationForm({ projects }) {
         <label className="block text-sm text-slate-400 mb-2">Select Project *</label>
         <select
           value={selectedProject}
-          onChange={(e) => setSelectedProject(e.target.value)}
+          onChange={handleProjectChange}
           className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white focus:border-blue-500 focus:outline-none"
         >
           <option value="">Select a project</option>
@@ -532,14 +550,22 @@ function UpdateUtilizationForm({ projects }) {
       </div>
 
       <div>
-        <label className="block text-sm text-slate-400 mb-2">Milestone ID *</label>
-        <input
-          type="number"
+        <label className="block text-sm text-slate-400 mb-2">Milestone *</label>
+        <select
           value={milestoneId}
           onChange={(e) => setMilestoneId(e.target.value)}
-          placeholder="e.g., 0"
-          className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:border-blue-500 focus:outline-none"
-        />
+          className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white focus:border-blue-500 focus:outline-none"
+          disabled={!hasMilestones}
+        >
+          <option value="">
+            {!selectedProject ? 'Select a project first' : !hasMilestones ? 'No milestones (release funds first)' : 'Select milestone'}
+          </option>
+          {milestones.map((m, idx) => (
+            <option key={idx} value={idx}>
+              Milestone {idx}: Released {formatEther(m.amountReleased)} MON · Utilized {formatEther(m.amountUtilized)} MON
+            </option>
+          ))}
+        </select>
       </div>
 
       <div>
@@ -581,15 +607,25 @@ function UploadProofForm({ projects }) {
   const [proofFile, setProofFile] = useState(null);
   const [uploading, setUploading] = useState(false);
 
-  const { config } = usePrepareContractWrite({
+  // Fetch project data to get valid milestones when project is selected
+  const { data: projectData } = useContractRead({
+    address: CONTRACT_ADDRESS,
+    abi: CONTRACT_ABI,
+    functionName: 'getProjectCompleteData',
+    args: selectedProject !== '' ? [BigInt(selectedProject)] : undefined,
+    enabled: !!selectedProject,
+  });
+
+  const milestones = projectData?.milestones ?? [];
+  const hasMilestones = milestones.length > 0;
+
+  // Use mode: 'recklesslyUnprepared' so we can pass CID dynamically after IPFS upload
+  const { writeAsync: writeProof, data } = useContractWrite({
     address: CONTRACT_ADDRESS,
     abi: CONTRACT_ABI,
     functionName: 'uploadMilestoneProof',
-    args: selectedProject && milestoneId ? [BigInt(selectedProject), BigInt(milestoneId), ''] : undefined,
-    enabled: false,
+    mode: 'recklesslyUnprepared',
   });
-
-  const { data } = useContractWrite(config);
   const { isLoading } = useWaitForTransaction({ hash: data?.hash });
 
   const uploadProof = async () => {
@@ -612,24 +648,36 @@ function UploadProofForm({ projects }) {
       toast.error('Please select a proof file');
       return;
     }
+    if (!selectedProject || milestoneId === '') {
+      toast.error('Please select project and milestone');
+      return;
+    }
 
     try {
       setUploading(true);
       const toastId = toast.loading('Uploading proof to IPFS...');
-      await uploadProof();
-      toast.success('Proof uploaded!', { id: toastId });
+      const cid = await uploadProof();
+      toast.loading('Linking proof to blockchain...', { id: toastId });
       
-      // Now call contract with the CID
-      // This would need a custom hook to pass the CID dynamically
-      toast.success('Proof linked to milestone!');
+      await writeProof({
+        args: [BigInt(selectedProject), BigInt(milestoneId), cid],
+      });
       
+      toast.success('Proof linked to milestone!', { id: toastId });
       setProofFile(null);
+      setMilestoneId('');
     } catch (error) {
       console.error('Error:', error);
-      toast.error('Failed to upload proof');
+      const msg = error?.shortMessage || error?.message || 'Failed to upload proof';
+      toast.error(msg);
     } finally {
       setUploading(false);
     }
+  };
+
+  const handleProjectChange = (e) => {
+    setSelectedProject(e.target.value);
+    setMilestoneId('');
   };
 
   return (
@@ -640,7 +688,7 @@ function UploadProofForm({ projects }) {
         <label className="block text-sm text-slate-400 mb-2">Select Project *</label>
         <select
           value={selectedProject}
-          onChange={(e) => setSelectedProject(e.target.value)}
+          onChange={handleProjectChange}
           className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white focus:border-blue-500 focus:outline-none"
         >
           <option value="">Select a project</option>
@@ -651,14 +699,22 @@ function UploadProofForm({ projects }) {
       </div>
 
       <div>
-        <label className="block text-sm text-slate-400 mb-2">Milestone ID *</label>
-        <input
-          type="number"
+        <label className="block text-sm text-slate-400 mb-2">Milestone *</label>
+        <select
           value={milestoneId}
           onChange={(e) => setMilestoneId(e.target.value)}
-          placeholder="e.g., 0"
-          className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:border-blue-500 focus:outline-none"
-        />
+          className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white focus:border-blue-500 focus:outline-none"
+          disabled={!hasMilestones}
+        >
+          <option value="">
+            {!selectedProject ? 'Select a project first' : !hasMilestones ? 'No milestones (release funds first)' : 'Select milestone'}
+          </option>
+          {milestones.map((m, idx) => (
+            <option key={idx} value={idx}>
+              Milestone {idx}: Released {formatEther(m.amountReleased)} MON · Utilized {formatEther(m.amountUtilized)} MON
+            </option>
+          ))}
+        </select>
       </div>
 
       <div>

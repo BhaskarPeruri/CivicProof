@@ -34,9 +34,8 @@ const upload = multer({
   },
 });
 
-// Pinata IPFS configuration
-const PINATA_API_KEY = process.env.PINATA_API_KEY;
-const PINATA_SECRET_KEY = process.env.PINATA_SECRET_KEY;
+// Pinata IPFS configuration (JWT is required - legacy API keys cause 403)
+const PINATA_JWT = process.env.PINATA_JWT;
 const PINATA_API_URL = "https://api.pinata.cloud/pinning/pinFileToIPFS";
 
 /**
@@ -93,13 +92,19 @@ app.post("/upload", upload.single("document"), async (req, res) => {
     });
     formData.append("pinataOptions", pinataOptions);
 
-    // Make request to Pinata
+    if (!PINATA_JWT) {
+      return res.status(500).json({
+        error: "Pinata JWT not configured",
+        message: "Set PINATA_JWT in backend/.env. Get JWT from https://app.pinata.cloud/",
+      });
+    }
+
+    // Make request to Pinata (JWT auth required - legacy API keys cause 403)
     const ipfsResponse = await axios.post(PINATA_API_URL, formData, {
       maxBodyLength: Infinity,
       headers: {
         ...formData.getHeaders(),
-        pinata_api_key: PINATA_API_KEY,
-        pinata_secret_api_key: PINATA_SECRET_KEY,
+        Authorization: `Bearer ${PINATA_JWT}`,
       },
     });
 
@@ -114,10 +119,22 @@ app.post("/upload", upload.single("document"), async (req, res) => {
       fileSize: file.size,
     });
   } catch (error) {
-    console.error("❌ Upload error:", error.message);
+    const status = error.response?.status;
+    const pinataError = error.response?.data?.error || error.response?.data?.message;
+    const msg = pinataError || error.message;
+    console.error("❌ Upload error:", status, msg, error.response?.data);
+
+    if (status === 403) {
+      const pinataMsg = error.response?.data?.error || error.response?.data?.message || "";
+      return res.status(403).json({
+        error: "Pinata rejected upload (403)",
+        message: pinataMsg || "JWT may be expired or revoked. Generate a new JWT at https://app.pinata.cloud/ → API Keys → New Key → JWT",
+      });
+    }
+
     res.status(500).json({
       error: "Failed to upload document",
-      message: error.message,
+      message: msg,
     });
   }
 });
@@ -149,6 +166,11 @@ app.listen(PORT, () => {
   console.log("   CivicProof - Backend Server");
   console.log("==============================================");
   console.log(`🚀 Server running on http://localhost:${PORT}`);
+  if (!PINATA_JWT) {
+    console.warn("\n⚠️  PINATA_JWT not set - document uploads will fail. Add to backend/.env");
+  } else {
+    console.log("✅ Pinata JWT configured for IPFS uploads");
+  }
   console.log("\n📋 Available endpoints:");
   console.log(`   GET  http://localhost:${PORT}/health`);
   console.log(`   POST http://localhost:${PORT}/upload`);

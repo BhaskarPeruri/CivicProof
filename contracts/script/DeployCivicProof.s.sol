@@ -26,3 +26,6 @@ contract DeployCivicProof is Script {
         console.log("Domain Separator:", vm.toString(civicProof.DOMAIN_SEPARATOR()));
     }
 }
+
+//forge script script/DeployCivicProof.s.sol --rpc-url https://testnet-rpc.monad.xyz  --private-key $PRIVATE_KEY  --broadcast 
+//forge verify-contract  0xc38a50B7Bd3254059237e972483ef92b3DD634FC       src/CivicProof.sol:CivicProof    --chain 10143   --verifier sourcify     --verifier-url https://sourcify-api-monad.blockvision.org/     --constructor-args $(cast abi-encode "constructor(address)" 0x2e118e720e4142E75fC79a0f57745Af650d39F94)
