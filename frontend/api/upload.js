@@ -3,7 +3,14 @@
  * Upload document to IPFS via Pinata.
  * Note: Vercel has a 4.5 MB request body limit on Hobby plan.
  */
-const { Formidable } = require('formidable');
+const formidableModule = require('formidable');
+// Support named (Formidable), default, v2 (IncomingForm), or module-as-function
+const Formidable =
+  formidableModule.Formidable ||
+  formidableModule.default ||
+  formidableModule.IncomingForm ||
+  (typeof formidableModule === 'function' ? formidableModule : null) ||
+  formidableModule;
 const FormData = require('form-data');
 const axios = require('axios');
 const fs = require('fs');
@@ -13,7 +20,7 @@ const ALLOWED_MIMES = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'
 
 async function parseMultipart(req) {
   return new Promise((resolve, reject) => {
-    const form = new Formidable({
+    const opts = {
       maxFileSize: 4 * 1024 * 1024, // 4MB (under Vercel limit)
       uploadDir: typeof process !== 'undefined' && process.env.VERCEL === '1' ? '/tmp' : undefined,
       filter: (part) => {
@@ -23,7 +30,18 @@ async function parseMultipart(req) {
         }
         return true;
       },
-    });
+    };
+    let form;
+    if (typeof Formidable === 'function') {
+      try {
+        form = new Formidable(opts);
+      } catch (_) {
+        form = Formidable(opts);
+      }
+    }
+    if (!form || typeof form.parse !== 'function') {
+      return reject(new Error('Formidable not available (Formidable.Formidable or default)'));
+    }
     form.parse(req, (err, fields, files) => {
       if (err) return reject(err);
       resolve({ fields, files });
